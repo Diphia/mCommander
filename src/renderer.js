@@ -91,6 +91,23 @@ class FilePane {
             this.render()
         }
     }
+
+    jumpToTop() {
+        this.selectedIndex = 0
+        this.render()
+    }
+
+    jumpToBottom() {
+        this.selectedIndex = this.files.length - 1
+        this.render()
+    }
+
+    centerCurrentFile() {
+        const selectedItem = this.fileList.children[this.selectedIndex]
+        if (selectedItem) {
+            selectedItem.scrollIntoView({ block: 'center' })
+        }
+    }
 }
 
 // Initialize both panes
@@ -101,8 +118,10 @@ const rightPane = new FilePane('rightFiles', 'rightPath')
 let activePane = leftPane
 leftPane.isActive = true // Set initial active pane
 
-// Add this property to track quick jump state
+// Add these properties to track key sequences
 let waitingForQuickJump = false
+let waitingForG = false
+let waitingForZ = false
 
 // Handle keyboard events
 document.addEventListener('keydown', (e) => {
@@ -121,7 +140,38 @@ document.addEventListener('keydown', (e) => {
         }
     }
 
+    // Handle 'gg' sequence
+    if (e.key === 'g' && !waitingForG) {
+        waitingForG = true
+        return
+    }
+
+    if (waitingForG) {
+        waitingForG = false
+        if (e.key === 'g') {
+            activePane.jumpToTop()
+            return
+        }
+    }
+
+    // Handle 'zz' sequence
+    if (e.key === 'z' && !waitingForZ) {
+        waitingForZ = true
+        return
+    }
+
+    if (waitingForZ) {
+        waitingForZ = false
+        if (e.key === 'z') {
+            activePane.centerCurrentFile()
+            return
+        }
+    }
+
     switch (e.key) {
+        case 'G':
+            activePane.jumpToBottom()
+            break
         case 'j':
             activePane.moveSelection(1)
             break
