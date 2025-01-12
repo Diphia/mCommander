@@ -1,6 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
+const { quickJumpMappings } = require('./config')
 
 class FilePane {
     constructor(fileListId, pathDisplayId) {
@@ -100,8 +101,26 @@ const rightPane = new FilePane('rightFiles', 'rightPath')
 let activePane = leftPane
 leftPane.isActive = true // Set initial active pane
 
+// Add this property to track quick jump state
+let waitingForQuickJump = false
+
 // Handle keyboard events
 document.addEventListener('keydown', (e) => {
+    // Handle quick jump sequence
+    if (e.key === 'd' && !waitingForQuickJump) {
+        waitingForQuickJump = true
+        return
+    }
+
+    if (waitingForQuickJump) {
+        waitingForQuickJump = false
+        const targetPath = quickJumpMappings[e.key]
+        if (targetPath) {
+            activePane.loadDirectory(targetPath)
+            return
+        }
+    }
+
     switch (e.key) {
         case 'j':
             activePane.moveSelection(1)
