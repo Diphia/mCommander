@@ -191,6 +191,37 @@ class FilePane {
         inactivePane.fileList.classList.remove('preview-mode');
         inactivePane.loadDirectory(inactivePane.currentPath);
     }
+
+    copySelectedFile(targetPath) {
+        const selected = this.files[this.selectedIndex];
+        if (!selected) return;
+
+        const sourcePath = path.join(this.currentPath, selected.name);
+        const targetFilePath = path.join(targetPath, selected.name);
+
+        try {
+            // Check if target file exists
+            if (fs.existsSync(targetFilePath)) {
+                console.error('Target file already exists:', targetFilePath);
+                return;
+            }
+
+            // Use copyFileSync for files and recursive copy for directories
+            if (selected.isDirectory) {
+                fs.cpSync(sourcePath, targetFilePath, { recursive: true });
+            } else {
+                fs.copyFileSync(sourcePath, targetFilePath);
+            }
+            
+            // Refresh target directory
+            const inactivePane = this === leftPane ? rightPane : leftPane;
+            inactivePane.loadDirectory(inactivePane.currentPath);
+            showNotification(`Copied: ${selected.name}`);
+        } catch (error) {
+            console.error('Error copying file:', error);
+            showNotification(`Error copying file: ${error.message}`);
+        }
+    }
 }
 
 // Initialize both panes
@@ -319,6 +350,10 @@ document.addEventListener('keydown', (e) => {
                 clipboard.writeText(fullPath);
                 showNotification(fullPath);
             }
+            break;
+        case 'C':
+            const inactivePaneForCopy = activePane === leftPane ? rightPane : leftPane;
+            activePane.copySelectedFile(inactivePaneForCopy.currentPath);
             break;
         case 'R':
             const inactivePane = activePane === leftPane ? rightPane : leftPane;
