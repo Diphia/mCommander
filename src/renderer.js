@@ -1,7 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
-const { shell } = require('electron')
+const { shell, clipboard } = require('electron')
 const { quickJumpMappings } = require('./config')
 
 class FilePane {
@@ -213,7 +213,17 @@ let waitingForZ = false
 // Add search mode handling
 const searchBox = document.getElementById('searchBox');
 const searchInput = document.getElementById('searchInput');
+const notificationBox = document.getElementById('notificationBox');
+const notificationText = document.getElementById('notificationText');
 let isSearchMode = false;
+
+function showNotification(text, duration = 2000) {
+    notificationText.textContent = text;
+    notificationBox.classList.remove('hidden');
+    setTimeout(() => {
+        notificationBox.classList.add('hidden');
+    }, duration);
+}
 
 function enterSearchMode() {
     isSearchMode = true;
@@ -302,6 +312,14 @@ document.addEventListener('keydown', (e) => {
     }
 
     switch (e.key) {
+        case 'Y':
+            const selectedFile = activePane.files[activePane.selectedIndex];
+            if (selectedFile) {
+                const fullPath = path.join(activePane.currentPath, selectedFile.name);
+                clipboard.writeText(fullPath);
+                showNotification(fullPath);
+            }
+            break;
         case 'R':
             const inactivePane = activePane === leftPane ? rightPane : leftPane;
             activePane.moveSelectedFile(inactivePane.currentPath);

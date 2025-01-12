@@ -108,6 +108,36 @@ body {
     color: #666;
 }
 
+/* Notification box styles */
+.notification-box {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2c2c2c;
+    padding: 8px 12px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    color: #fff;
+    font-size: 14px;
+}
+
+.notification-box.hidden {
+    display: none;
+}
+
+.notification-prefix {
+    color: #888;
+    margin-right: 8px;
+}
+
+#notificationText {
+    color: #fff;
+}
+
 /* Preview mode styles */
 .file-list.preview-mode {
     display: flex;
