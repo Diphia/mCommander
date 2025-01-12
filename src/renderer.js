@@ -160,6 +160,37 @@ class FilePane {
             console.error('Error moving file:', error);
         }
     }
+
+    showPreview() {
+        const selected = this.files[this.selectedIndex];
+        if (!selected || selected.isDirectory) {
+            this.clearPreview();
+            return;
+        }
+
+        const filePath = path.join(this.currentPath, selected.name);
+        const ext = path.extname(selected.name).toLowerCase();
+        
+        if (supportedPreviewExtensions.includes(ext)) {
+            const inactivePane = this === leftPane ? rightPane : leftPane;
+            inactivePane.fileList.innerHTML = '';
+            inactivePane.fileList.classList.add('preview-mode');
+            const img = document.createElement('img');
+            img.src = filePath;
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '100%';
+            img.style.objectFit = 'contain';
+            inactivePane.fileList.appendChild(img);
+        } else {
+            this.clearPreview();
+        }
+    }
+
+    clearPreview() {
+        const inactivePane = this === leftPane ? rightPane : leftPane;
+        inactivePane.fileList.classList.remove('preview-mode');
+        inactivePane.loadDirectory(inactivePane.currentPath);
+    }
 }
 
 // Initialize both panes
@@ -169,6 +200,10 @@ const rightPane = new FilePane('rightFiles', 'rightPath')
 // Track which pane is active
 let activePane = leftPane
 leftPane.isActive = true // Set initial active pane
+
+// Add preview mode state
+let isPreviewMode = false;
+const supportedPreviewExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
 
 // Add these properties to track key sequences
 let waitingForQuickJump = false
@@ -256,6 +291,16 @@ document.addEventListener('keydown', (e) => {
         }
     }
 
+    if (e.key === 'q') {
+        isPreviewMode = !isPreviewMode;
+        if (isPreviewMode) {
+            activePane.showPreview();
+        } else {
+            activePane.clearPreview();
+        }
+        return;
+    }
+
     switch (e.key) {
         case 'R':
             const inactivePane = activePane === leftPane ? rightPane : leftPane;
@@ -266,9 +311,11 @@ document.addEventListener('keydown', (e) => {
             break;
         case 'j':
             activePane.moveSelection(1)
+            if (isPreviewMode) activePane.showPreview()
             break
         case 'k':
             activePane.moveSelection(-1)
+            if (isPreviewMode) activePane.showPreview()
             break
         case 'u':
             if (e.ctrlKey) {
