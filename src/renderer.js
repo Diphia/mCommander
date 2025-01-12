@@ -114,6 +114,20 @@ class FilePane {
             selectedItem.scrollIntoView({ block: 'center' })
         }
     }
+
+    searchAndSelect(query) {
+        if (!query) return;
+        
+        const lowerQuery = query.toLowerCase();
+        const foundIndex = this.files.findIndex(file => 
+            file.name.toLowerCase().includes(lowerQuery)
+        );
+        
+        if (foundIndex !== -1) {
+            this.selectedIndex = foundIndex;
+            this.render();
+        }
+    }
 }
 
 // Initialize both panes
@@ -129,8 +143,44 @@ let waitingForQuickJump = false
 let waitingForG = false
 let waitingForZ = false
 
+// Add search mode handling
+const searchBox = document.getElementById('searchBox');
+const searchInput = document.getElementById('searchInput');
+let isSearchMode = false;
+
+function enterSearchMode() {
+    isSearchMode = true;
+    searchBox.classList.remove('hidden');
+    searchInput.value = '';
+    searchInput.focus();
+}
+
+function exitSearchMode() {
+    isSearchMode = false;
+    searchBox.classList.add('hidden');
+    searchInput.value = '';
+}
+
 // Handle keyboard events
 document.addEventListener('keydown', (e) => {
+    if (isSearchMode) {
+        if (e.key === 'Escape') {
+            exitSearchMode();
+            return;
+        }
+        if (e.key === 'Enter') {
+            exitSearchMode();
+            return;
+        }
+        return;
+    }
+
+    if (e.key === '/' && !e.ctrlKey && !e.shiftKey) {
+        e.preventDefault();
+        enterSearchMode();
+        return;
+    }
+
     // Handle quick jump sequence
     if (e.key === 'd' && !e.ctrlKey && !waitingForQuickJump) {
         waitingForQuickJump = true
@@ -215,3 +265,10 @@ document.addEventListener('keydown', (e) => {
             break
     }
 }) 
+
+// Add search input handler
+searchInput.addEventListener('input', (e) => {
+    if (isSearchMode) {
+        activePane.searchAndSelect(e.target.value);
+    }
+}); 

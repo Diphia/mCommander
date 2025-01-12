@@ -71,3 +71,39 @@ body {
 .fa-file {
     color: #808080;
 }
+
+.search-box {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2c2c2c;
+    padding: 8px 12px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+}
+
+.search-box.hidden {
+    display: none;
+}
+
+.search-prefix {
+    color: #888;
+    margin-right: 4px;
+}
+
+#searchInput {
+    background: transparent;
+    border: none;
+    color: #fff;
+    outline: none;
+    font-size: 14px;
+    width: 200px;
+}
+
+#searchInput::placeholder {
+    color: #666;
+}
