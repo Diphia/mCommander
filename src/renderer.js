@@ -9,6 +9,7 @@ class FilePane {
         this.currentPath = os.homedir()
         this.selectedIndex = 0
         this.files = []
+        this.isActive = false
         
         this.loadDirectory(this.currentPath)
     }
@@ -41,7 +42,12 @@ class FilePane {
 
         this.files.forEach((file, index) => {
             const item = document.createElement('div')
-            item.className = `file-item ${index === this.selectedIndex ? 'selected' : ''}`
+            const isSelected = index === this.selectedIndex
+            let className = 'file-item'
+            if (isSelected) {
+                className += this.isActive ? ' selected' : ' selected-inactive'
+            }
+            item.className = className
             const icon = document.createElement('i')
             icon.className = file.isDirectory ? 'fas fa-folder' : 'fas fa-file'
             const nameSpan = document.createElement('span')
@@ -85,6 +91,7 @@ const rightPane = new FilePane('rightFiles', 'rightPath')
 
 // Track which pane is active
 let activePane = leftPane
+leftPane.isActive = true // Set initial active pane
 
 // Handle keyboard events
 document.addEventListener('keydown', (e) => {
@@ -104,7 +111,11 @@ document.addEventListener('keydown', (e) => {
         case 'Tab':
             // Switch active pane
             e.preventDefault()
+            activePane.isActive = false
+            activePane.render()
             activePane = activePane === leftPane ? rightPane : leftPane
+            activePane.isActive = true
+            activePane.render()
             break
     }
 }) 

@@ -43,7 +43,12 @@ body {
     color: white;
 }
 
-.file-item:hover:not(.selected) {
+.file-item.selected-inactive {
+    background-color: #b3d4fc;
+    color: black;
+}
+
+.file-item:hover:not(.selected):not(.selected-inactive) {
     background-color: #f0f0f0;
 } 
 
