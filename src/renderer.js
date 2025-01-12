@@ -81,7 +81,14 @@ class FilePane {
 
     navigateUp() {
         const parentPath = path.dirname(this.currentPath)
+        const currentDirName = path.basename(this.currentPath)
         this.loadDirectory(parentPath)
+        // Find and select the directory we came from
+        const dirIndex = this.files.findIndex(file => file.name === currentDirName)
+        if (dirIndex !== -1) {
+            this.selectedIndex = dirIndex
+            this.render()
+        }
     }
 }
 
