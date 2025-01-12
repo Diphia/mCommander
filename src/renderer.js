@@ -72,6 +72,12 @@ class FilePane {
         }
     }
 
+    moveMultipleItems(count) {
+        const newIndex = this.selectedIndex + count
+        this.selectedIndex = Math.max(0, Math.min(newIndex, this.files.length - 1))
+        this.render()
+    }
+
     enterSelected() {
         const selected = this.files[this.selectedIndex]
         if (selected && selected.isDirectory) {
@@ -126,7 +132,7 @@ let waitingForZ = false
 // Handle keyboard events
 document.addEventListener('keydown', (e) => {
     // Handle quick jump sequence
-    if (e.key === 'd' && !waitingForQuickJump) {
+    if (e.key === 'd' && !e.ctrlKey && !waitingForQuickJump) {
         waitingForQuickJump = true
         return
     }
@@ -177,6 +183,20 @@ document.addEventListener('keydown', (e) => {
             break
         case 'k':
             activePane.moveSelection(-1)
+            break
+        case 'u':
+            if (e.ctrlKey) {
+                e.preventDefault()
+                activePane.moveMultipleItems(-10)
+            }
+            break
+        case 'd':
+            if (e.ctrlKey) {
+                e.preventDefault()
+                activePane.moveMultipleItems(10)
+            } else if (!waitingForQuickJump) {
+                waitingForQuickJump = true
+            }
             break
         case 'Enter':
             activePane.enterSelected()
