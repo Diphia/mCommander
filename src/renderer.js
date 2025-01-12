@@ -1,6 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
+const { shell } = require('electron')
 const { quickJumpMappings } = require('./config')
 
 class FilePane {
@@ -83,6 +84,12 @@ class FilePane {
         if (selected && selected.isDirectory) {
             const newPath = path.join(this.currentPath, selected.name)
             this.loadDirectory(newPath)
+        } else if (selected) {
+            // Open file with system default application
+            const filePath = path.join(this.currentPath, selected.name)
+            shell.openPath(filePath).catch(err => {
+                console.error('Error opening file:', err)
+            })
         }
     }
 
