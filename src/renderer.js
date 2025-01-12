@@ -44,8 +44,10 @@ class FilePane {
             item.className = `file-item ${index === this.selectedIndex ? 'selected' : ''}`
             const icon = document.createElement('i')
             icon.className = file.isDirectory ? 'fas fa-folder' : 'fas fa-file'
+            const nameSpan = document.createElement('span')
+            nameSpan.textContent = file.name
             item.appendChild(icon)
-            item.appendChild(document.createTextNode(` ${file.name}`))
+            item.appendChild(nameSpan)
             this.fileList.appendChild(item)
             
             // If this is the selected item, scroll it into view

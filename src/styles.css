@@ -14,6 +14,7 @@ body {
     border: 1px solid #ccc;
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .path-display {
@@ -30,6 +31,11 @@ body {
 .file-item {
     padding: 5px 10px;
     cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
 }
 
 .file-item.selected {
@@ -44,6 +50,13 @@ body {
 .file-item i {
     margin-right: 8px;
     width: 16px;
+    flex-shrink: 0;
+}
+
+.file-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .fa-folder {
