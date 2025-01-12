@@ -18,23 +18,41 @@ class FilePane {
 
     loadDirectory(dirPath) {
         try {
-            this.files = fs.readdirSync(dirPath)
-                .map(file => ({
-                    name: file,
-                    isDirectory: fs.statSync(path.join(dirPath, file)).isDirectory()
-                }))
+            const entries = fs.readdirSync(dirPath);
+            this.files = entries
+                .map(file => {
+                    try {
+                        const fullPath = path.join(dirPath, file);
+                        const stats = fs.statSync(fullPath);
+                        return {
+                            name: file,
+                            isDirectory: stats.isDirectory()
+                        };
+                    } catch (error) {
+                        // Skip files we can't access
+                        console.log(`Skipping inaccessible file: ${file}`);
+                        return null;
+                    }
+                })
+                .filter(file => file !== null) // Remove null entries
                 .sort((a, b) => {
                     if (a.isDirectory === b.isDirectory) {
-                        return a.name.localeCompare(b.name)
+                        return a.name.localeCompare(b.name);
                     }
-                    return b.isDirectory - a.isDirectory
-                })
+                    return b.isDirectory - a.isDirectory;
+                });
 
-            this.currentPath = dirPath
-            this.selectedIndex = 0
-            this.render()
+            this.currentPath = dirPath;
+            this.selectedIndex = 0;
+            this.render();
         } catch (error) {
-            console.error('Error loading directory:', error)
+            console.error('Error loading directory:', error);
+            showNotification(`Cannot access directory: ${error.message}`);
+            
+            // If we can't access the directory, try to go back to the parent
+            if (this.currentPath !== dirPath) {
+                this.loadDirectory(this.currentPath);
+            }
         }
     }
 
@@ -406,17 +424,29 @@ document.addEventListener('keydown', (e) => {
 
     // Handle quick jump sequence
     if (e.key === 'd' && !e.ctrlKey && !waitingForQuickJump) {
-        waitingForQuickJump = true
-        return
+        waitingForQuickJump = true;
+        console.log('Waiting for quick jump key...');
+        return;
     }
 
     if (waitingForQuickJump) {
-        waitingForQuickJump = false
-        const targetPath = quickJumpMappings[e.key]
+        waitingForQuickJump = false;
+        console.log('Quick jump key pressed:', e.key);
+        const targetPath = quickJumpMappings[e.key];
         if (targetPath) {
-            activePane.loadDirectory(targetPath)
-            return
+            console.log('Jumping to:', targetPath);
+            try {
+                // Check if directory exists and is accessible
+                fs.accessSync(targetPath, fs.constants.R_OK);
+                activePane.loadDirectory(targetPath);
+            } catch (error) {
+                console.error('Error accessing directory:', error);
+                showNotification(`Cannot access ${targetPath}: ${error.message}`);
+            }
+        } else {
+            console.log('No mapping found for key:', e.key);
         }
+        return;
     }
 
     // Handle 'gg' sequence
