@@ -136,7 +136,7 @@ class FilePane {
         }
     }
 
-    moveSelectedFile(targetPath) {
+    async moveSelectedFile(targetPath) {
         const selected = this.files[this.selectedIndex];
         if (!selected) return;
 
@@ -150,14 +150,77 @@ class FilePane {
                 return;
             }
 
-            fs.renameSync(sourcePath, targetFilePath);
+            showProgress('Moving');
+
+            // For move operations, first copy with progress then delete source
+            if (selected.isDirectory) {
+                await new Promise((resolve, reject) => {
+                    try {
+                        copyDirWithProgress(sourcePath, targetFilePath, updateProgress);
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+                fs.rmSync(sourcePath, { recursive: true });
+            } else {
+                await copyFileWithProgress(sourcePath, targetFilePath, updateProgress);
+                fs.unlinkSync(sourcePath);
+            }
             
-            // Refresh both current directory and target directory
+            hideProgress();
+            
+            // Refresh both directories
             this.loadDirectory(this.currentPath);
             const inactivePane = this === leftPane ? rightPane : leftPane;
             inactivePane.loadDirectory(inactivePane.currentPath);
         } catch (error) {
+            hideProgress();
             console.error('Error moving file:', error);
+            showNotification(`Error moving file: ${error.message}`);
+        }
+    }
+
+    async copySelectedFile(targetPath) {
+        const selected = this.files[this.selectedIndex];
+        if (!selected) return;
+
+        const sourcePath = path.join(this.currentPath, selected.name);
+        const targetFilePath = path.join(targetPath, selected.name);
+
+        try {
+            // Check if target file exists
+            if (fs.existsSync(targetFilePath)) {
+                console.error('Target file already exists:', targetFilePath);
+                return;
+            }
+
+            showProgress('Copying');
+
+            // Use different copy methods based on file type
+            if (selected.isDirectory) {
+                await new Promise((resolve, reject) => {
+                    try {
+                        copyDirWithProgress(sourcePath, targetFilePath, updateProgress);
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+            } else {
+                await copyFileWithProgress(sourcePath, targetFilePath, updateProgress);
+            }
+            
+            hideProgress();
+            
+            // Refresh target directory
+            const inactivePane = this === leftPane ? rightPane : leftPane;
+            inactivePane.loadDirectory(inactivePane.currentPath);
+            showNotification(`Copied: ${selected.name}`);
+        } catch (error) {
+            hideProgress();
+            console.error('Error copying file:', error);
+            showNotification(`Error copying file: ${error.message}`);
         }
     }
 
@@ -191,37 +254,6 @@ class FilePane {
         inactivePane.fileList.classList.remove('preview-mode');
         inactivePane.loadDirectory(inactivePane.currentPath);
     }
-
-    copySelectedFile(targetPath) {
-        const selected = this.files[this.selectedIndex];
-        if (!selected) return;
-
-        const sourcePath = path.join(this.currentPath, selected.name);
-        const targetFilePath = path.join(targetPath, selected.name);
-
-        try {
-            // Check if target file exists
-            if (fs.existsSync(targetFilePath)) {
-                console.error('Target file already exists:', targetFilePath);
-                return;
-            }
-
-            // Use copyFileSync for files and recursive copy for directories
-            if (selected.isDirectory) {
-                fs.cpSync(sourcePath, targetFilePath, { recursive: true });
-            } else {
-                fs.copyFileSync(sourcePath, targetFilePath);
-            }
-            
-            // Refresh target directory
-            const inactivePane = this === leftPane ? rightPane : leftPane;
-            inactivePane.loadDirectory(inactivePane.currentPath);
-            showNotification(`Copied: ${selected.name}`);
-        } catch (error) {
-            console.error('Error copying file:', error);
-            showNotification(`Error copying file: ${error.message}`);
-        }
-    }
 }
 
 // Initialize both panes
@@ -247,6 +279,89 @@ const searchInput = document.getElementById('searchInput');
 const notificationBox = document.getElementById('notificationBox');
 const notificationText = document.getElementById('notificationText');
 let isSearchMode = false;
+
+// Progress bar elements
+const progressBox = document.getElementById('progressBox');
+const progressBar = document.getElementById('progressBar');
+const progressLabel = progressBox.querySelector('.progress-label');
+
+function showProgress(operation) {
+    progressLabel.textContent = `${operation}...`;
+    progressBox.classList.remove('hidden');
+    progressBar.style.width = '0%';
+}
+
+function updateProgress(percent) {
+    progressBar.style.width = `${percent}%`;
+}
+
+function hideProgress() {
+    progressBox.classList.add('hidden');
+}
+
+function getFileSize(filePath) {
+    try {
+        const stats = fs.statSync(filePath);
+        return stats.size;
+    } catch (error) {
+        console.error('Error getting file size:', error);
+        return 0;
+    }
+}
+
+function copyFileWithProgress(sourcePath, targetPath, onProgress) {
+    return new Promise((resolve, reject) => {
+        const sourceSize = getFileSize(sourcePath);
+        const readStream = fs.createReadStream(sourcePath);
+        const writeStream = fs.createWriteStream(targetPath);
+        let bytesRead = 0;
+
+        readStream.on('data', (chunk) => {
+            bytesRead += chunk.length;
+            const progress = (bytesRead / sourceSize) * 100;
+            onProgress(Math.min(progress, 100));
+        });
+
+        readStream.on('error', reject);
+        writeStream.on('error', reject);
+        writeStream.on('finish', resolve);
+
+        readStream.pipe(writeStream);
+    });
+}
+
+function copyDirWithProgress(sourcePath, targetPath, onProgress) {
+    try {
+        // Create target directory
+        fs.mkdirSync(targetPath, { recursive: true });
+        
+        // Get all items in the directory
+        const items = fs.readdirSync(sourcePath);
+        let processedItems = 0;
+        
+        // Process each item
+        for (const item of items) {
+            const srcPath = path.join(sourcePath, item);
+            const tgtPath = path.join(targetPath, item);
+            
+            if (fs.statSync(srcPath).isDirectory()) {
+                copyDirWithProgress(srcPath, tgtPath, (subProgress) => {
+                    // Weight the progress of subdirectories
+                    const itemProgress = (processedItems / items.length) * 100;
+                    const weightedSubProgress = (subProgress / items.length);
+                    onProgress(itemProgress + weightedSubProgress);
+                });
+            } else {
+                fs.copyFileSync(srcPath, tgtPath);
+            }
+            
+            processedItems++;
+            onProgress((processedItems / items.length) * 100);
+        }
+    } catch (error) {
+        throw error;
+    }
+}
 
 function showNotification(text, duration = 2000) {
     notificationText.textContent = text;

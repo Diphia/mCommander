@@ -149,7 +149,43 @@ body {
 
 .file-list.preview-mode img {
     max-width: 100%;
-    max-height: calc(100vh - 100px);
+    max-height: 100%;
     object-fit: contain;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.progress-box {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2c2c2c;
+    padding: 12px;
+    border-radius: 4px;
+    width: 300px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    color: white;
+}
+
+.progress-box.hidden {
+    display: none;
+}
+
+.progress-label {
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.progress-bar {
+    background: #444;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: #0066cc;
+    width: 0%;
+    transition: width 0.3s ease;
 }
