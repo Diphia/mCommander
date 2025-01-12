@@ -135,6 +135,31 @@ class FilePane {
             this.render();
         }
     }
+
+    moveSelectedFile(targetPath) {
+        const selected = this.files[this.selectedIndex];
+        if (!selected) return;
+
+        const sourcePath = path.join(this.currentPath, selected.name);
+        const targetFilePath = path.join(targetPath, selected.name);
+
+        try {
+            // Check if target file exists
+            if (fs.existsSync(targetFilePath)) {
+                console.error('Target file already exists:', targetFilePath);
+                return;
+            }
+
+            fs.renameSync(sourcePath, targetFilePath);
+            
+            // Refresh both current directory and target directory
+            this.loadDirectory(this.currentPath);
+            const inactivePane = this === leftPane ? rightPane : leftPane;
+            inactivePane.loadDirectory(inactivePane.currentPath);
+        } catch (error) {
+            console.error('Error moving file:', error);
+        }
+    }
 }
 
 // Initialize both panes
@@ -232,9 +257,13 @@ document.addEventListener('keydown', (e) => {
     }
 
     switch (e.key) {
+        case 'R':
+            const inactivePane = activePane === leftPane ? rightPane : leftPane;
+            activePane.moveSelectedFile(inactivePane.currentPath);
+            break;
         case 'G':
-            activePane.jumpToBottom()
-            break
+            activePane.jumpToBottom();
+            break;
         case 'j':
             activePane.moveSelection(1)
             break
