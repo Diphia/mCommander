@@ -14,6 +14,7 @@ class FilePane {
         this.isActive = false
         this.isSortMode = false
         this.sortTimeout = null
+        this.showDetails = false
         
         this.loadDirectory(this.currentPath)
     }
@@ -137,6 +138,27 @@ class FilePane {
         }
     }
 
+    formatFileSize(size) {
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        let unitIndex = 0;
+        while (size >= 1024 && unitIndex < units.length - 1) {
+            size /= 1024;
+            unitIndex++;
+        }
+        return `${size.toFixed(1)} ${units[unitIndex]}`;
+    }
+
+    formatDate(date) {
+        return date.toLocaleString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        }).replace(',', '');
+    }
+
     render() {
         this.pathDisplay.textContent = this.currentPath
         this.fileList.innerHTML = ''
@@ -149,12 +171,30 @@ class FilePane {
                 className += this.isActive ? ' selected' : ' selected-inactive'
             }
             item.className = className
+
+            // Icon and name
             const icon = document.createElement('i')
             icon.className = file.isDirectory ? 'fas fa-folder' : 'fas fa-file'
             const nameSpan = document.createElement('span')
             nameSpan.textContent = file.name
+            nameSpan.className = 'file-name'
             item.appendChild(icon)
             item.appendChild(nameSpan)
+
+            // Add details if enabled
+            if (this.showDetails) {
+                const sizeSpan = document.createElement('span')
+                sizeSpan.className = 'file-size'
+                sizeSpan.textContent = file.isDirectory ? '<DIR>' : this.formatFileSize(file.size)
+                
+                const dateSpan = document.createElement('span')
+                dateSpan.className = 'file-date'
+                dateSpan.textContent = this.formatDate(file.mtime)
+
+                item.appendChild(sizeSpan)
+                item.appendChild(dateSpan)
+            }
+
             this.fileList.appendChild(item)
             
             // If this is the selected item, scroll it into view
@@ -386,7 +426,7 @@ const progressLabel = progressBox.querySelector('.progress-label');
 
 function showProgress(operation) {
     progressLabel.textContent = `${operation}...`;
-    progressBox.classList.remove('hidden');
+    progressBox.classLimove('hidden');
     progressBar.style.width = '0%';
 }
 
@@ -652,6 +692,10 @@ document.addEventListener('keydown', (e) => {
             activePane.isActive = true
             activePane.render()
             break
+        case '(':
+            activePane.showDetails = !activePane.showDetails;
+            activePane.render();
+            break;
     }
 }) 
 
