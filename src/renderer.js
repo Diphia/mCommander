@@ -12,6 +12,8 @@ class FilePane {
         this.selectedIndex = 0
         this.files = []
         this.isActive = false
+        this.isSortMode = false
+        this.sortTimeout = null
         
         this.loadDirectory(this.currentPath)
     }
@@ -26,15 +28,17 @@ class FilePane {
                         const stats = fs.statSync(fullPath);
                         return {
                             name: file,
-                            isDirectory: stats.isDirectory()
+                            isDirectory: stats.isDirectory(),
+                            size: stats.size,
+                            mtime: stats.mtime,
+                            extension: path.extname(file).toLowerCase()
                         };
                     } catch (error) {
-                        // Skip files we can't access
                         console.log(`Skipping inaccessible file: ${file}`);
                         return null;
                     }
                 })
-                .filter(file => file !== null) // Remove null entries
+                .filter(file => file !== null)
                 .sort((a, b) => {
                     if (a.isDirectory === b.isDirectory) {
                         return a.name.localeCompare(b.name);
@@ -49,10 +53,78 @@ class FilePane {
             console.error('Error loading directory:', error);
             showNotification(`Cannot access directory: ${error.message}`);
             
-            // If we can't access the directory, try to go back to the parent
             if (this.currentPath !== dirPath) {
                 this.loadDirectory(this.currentPath);
             }
+        }
+    }
+
+    sortFiles(sortType) {
+        const currentFile = this.files[this.selectedIndex]?.name;
+        
+        switch (sortType) {
+            case 'm': // Modified time
+                this.files.sort((a, b) => {
+                    if (a.isDirectory === b.isDirectory) {
+                        return b.mtime - a.mtime;
+                    }
+                    return b.isDirectory - a.isDirectory;
+                });
+                break;
+            case 's': // Size
+                this.files.sort((a, b) => {
+                    if (a.isDirectory === b.isDirectory) {
+                        return b.size - a.size;
+                    }
+                    return b.isDirectory - a.isDirectory;
+                });
+                break;
+            case 'n': // Name
+                this.files.sort((a, b) => {
+                    if (a.isDirectory === b.isDirectory) {
+                        return a.name.localeCompare(b.name);
+                    }
+                    return b.isDirectory - a.isDirectory;
+                });
+                break;
+            case 'e': // Extension
+                this.files.sort((a, b) => {
+                    if (a.isDirectory === b.isDirectory) {
+                        return a.extension.localeCompare(b.extension) || a.name.localeCompare(b.name);
+                    }
+                    return b.isDirectory - a.isDirectory;
+                });
+                break;
+        }
+
+        // Try to maintain selection on the same file after sorting
+        if (currentFile) {
+            const newIndex = this.files.findIndex(file => file.name === currentFile);
+            if (newIndex !== -1) {
+                this.selectedIndex = newIndex;
+            }
+        }
+        
+        this.render();
+        this.exitSortMode();
+    }
+
+    enterSortMode() {
+        this.isSortMode = true;
+        showNotification('Sort mode: [m]time [s]ize [n]ame [e]xtension');
+        
+        // Exit sort mode after 2 seconds if no key is pressed
+        if (this.sortTimeout) {
+            clearTimeout(this.sortTimeout);
+        }
+        this.sortTimeout = setTimeout(() => this.exitSortMode(), 2000);
+    }
+
+    exitSortMode() {
+        this.isSortMode = false;
+        if (this.sortTimeout) {
+            clearTimeout(this.sortTimeout);
+            this.sortTimeout = null;
         }
     }
 
@@ -413,6 +485,28 @@ document.addEventListener('keydown', (e) => {
             exitSearchMode();
             return;
         }
+        return;
+    }
+
+    // Handle sort mode
+    if (activePane.isSortMode) {
+        switch (e.key.toLowerCase()) {
+            case 'm':
+            case 's':
+            case 'n':
+            case 'e':
+                activePane.sortFiles(e.key.toLowerCase());
+                return;
+            case 'Escape':
+                activePane.exitSortMode();
+                return;
+        }
+        return;
+    }
+
+    if (e.key === 's' && !e.ctrlKey && !e.shiftKey) {
+        e.preventDefault();
+        activePane.enterSortMode();
         return;
     }
 
