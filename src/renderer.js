@@ -18,7 +18,8 @@ class FilePane {
         this.loadDirectory(this.currentPath)
     }
 
-    loadDirectory(dirPath) {
+    loadDirectory(dirPath, preserveSelection = false) {
+        const currentSelectedFile = preserveSelection ? this.files[this.selectedIndex]?.name : null;
         try {
             const entries = fs.readdirSync(dirPath);
             this.files = entries
@@ -47,7 +48,15 @@ class FilePane {
                 });
 
             this.currentPath = dirPath;
-            this.selectedIndex = 0;
+            
+            // Restore selection if the file still exists
+            if (preserveSelection && currentSelectedFile) {
+                const newIndex = this.files.findIndex(file => file.name === currentSelectedFile);
+                this.selectedIndex = newIndex !== -1 ? newIndex : 0;
+            } else {
+                this.selectedIndex = 0;
+            }
+            
             this.render();
         } catch (error) {
             console.error('Error loading directory:', error);
@@ -553,6 +562,11 @@ document.addEventListener('keydown', (e) => {
         waitingForG = false
         if (e.key === 'g') {
             activePane.jumpToTop()
+            return
+        }
+        if (e.key === 'r') {
+            activePane.loadDirectory(activePane.currentPath, true)
+            showNotification('Directory refreshed')
             return
         }
     }
