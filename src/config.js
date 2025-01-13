@@ -8,8 +8,8 @@ const quickJumpMappings = {
     '1': os.homedir(),  // Home directory
     'd': path.join(os.homedir(), 'Downloads'),
     'e': path.join(os.homedir(), 'Desktop'),
-    't': '/tmp'
-    // Add more mappings as needed
+    't': path.join(os.homedir(), 'temp'),
+    'v': '/Volumes'
 }
 
 module.exports = {
