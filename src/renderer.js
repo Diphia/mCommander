@@ -372,11 +372,12 @@ class FilePane {
 
         const filePath = path.join(this.currentPath, selected.name);
         const ext = path.extname(selected.name).toLowerCase();
+        const inactivePane = this === leftPane ? rightPane : leftPane;
+        
+        inactivePane.fileList.innerHTML = '';
+        inactivePane.fileList.classList.add('preview-mode');
         
         if (supportedPreviewExtensions.includes(ext)) {
-            const inactivePane = this === leftPane ? rightPane : leftPane;
-            inactivePane.fileList.innerHTML = '';
-            inactivePane.fileList.classList.add('preview-mode');
             const img = document.createElement('img');
             img.src = filePath;
             img.style.maxWidth = '100%';
@@ -384,7 +385,11 @@ class FilePane {
             img.style.objectFit = 'contain';
             inactivePane.fileList.appendChild(img);
         } else {
-            this.clearPreview();
+            const message = document.createElement('div');
+            message.textContent = 'File type not supported for preview';
+            message.style.color = '#fff';
+            message.style.fontSize = '16px';
+            inactivePane.fileList.appendChild(message);
         }
     }
 
