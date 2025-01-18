@@ -3,6 +3,56 @@ const path = require('path')
 const os = require('os')
 const { shell, clipboard } = require('electron')
 const { quickJumpMappings } = require('./config')
+const crypto = require('crypto')
+const { exec } = require('child_process')
+
+// Video thumbnail cache management
+function getThumbCacheDir() {
+    const cacheDir = path.join(os.tmpdir(), 'mcommander-thumbs');
+    if (!fs.existsSync(cacheDir)) {
+        fs.mkdirSync(cacheDir, { recursive: true });
+    }
+    return cacheDir;
+}
+
+function getThumbPath(filePath) {
+    const hash = crypto.createHash('md5').update(filePath).digest('hex');
+    return path.join(getThumbCacheDir(), `${hash}.jpg`);
+}
+
+async function getVideoDuration(videoPath) {
+    return new Promise((resolve, reject) => {
+        const cmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${videoPath}"`;
+        exec(cmd, (error, stdout) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(parseFloat(stdout));
+            }
+        });
+    });
+}
+
+async function generateVideoThumbnail(videoPath, outputPath) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const duration = await getVideoDuration(videoPath);
+            const interval = Math.floor(duration/9);
+            // Generate a 3x3 tile of thumbnails
+            const cmd = `ffmpeg -i "${videoPath}" -vf "select=not(mod(n\\,${interval})),scale=320:180,tile=3x3" -frames:v 1 "${outputPath}"`;
+            exec(cmd, (error) => {
+                if (error) {
+                    console.error('Error generating thumbnail:', error);
+                    reject(error);
+                } else {
+                    resolve();
+                }
+            });
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
 
 class FilePane {
     constructor(fileListId, pathDisplayId) {
@@ -379,18 +429,53 @@ class FilePane {
         inactivePane.fileList.innerHTML = '';
         inactivePane.fileList.classList.add('preview-mode');
         
-        if (supportedPreviewExtensions.includes(ext)) {
+        if (['.jpg', '.jpeg', '.png', '.gif'].includes(ext)) {
+            // Handle image preview
             const img = document.createElement('img');
             img.src = filePath;
             img.style.maxWidth = '100%';
             img.style.maxHeight = '100%';
             img.style.objectFit = 'contain';
             inactivePane.fileList.appendChild(img);
+        } else if (['.mp4', '.mov', '.avi', '.mkv', '.webm'].includes(ext)) {
+            // Handle video preview
+            const thumbPath = getThumbPath(filePath);
+            
+            if (fs.existsSync(thumbPath)) {
+                // Use cached thumbnail
+                const img = document.createElement('img');
+                img.src = thumbPath;
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '100%';
+                img.style.objectFit = 'contain';
+                inactivePane.fileList.appendChild(img);
+            } else {
+                // Generate thumbnail
+                const loadingDiv = document.createElement('div');
+                loadingDiv.textContent = 'Generating video preview...';
+                loadingDiv.className = 'preview-loading';
+                inactivePane.fileList.appendChild(loadingDiv);
+
+                generateVideoThumbnail(filePath, thumbPath)
+                    .then(() => {
+                        inactivePane.fileList.innerHTML = '';
+                        const img = document.createElement('img');
+                        img.src = thumbPath;
+                        img.style.maxWidth = '100%';
+                        img.style.maxHeight = '100%';
+                        img.style.objectFit = 'contain';
+                        inactivePane.fileList.appendChild(img);
+                    })
+                    .catch(error => {
+                        loadingDiv.className = 'preview-error';
+                        loadingDiv.textContent = 'Error generating video preview';
+                        console.error('Error generating video preview:', error);
+                    });
+            }
         } else {
             const message = document.createElement('div');
             message.textContent = 'File type not supported for preview';
-            message.style.color = '#fff';
-            message.style.fontSize = '16px';
+            message.className = 'preview-error';
             inactivePane.fileList.appendChild(message);
         }
     }
@@ -412,7 +497,7 @@ leftPane.isActive = true // Set initial active pane
 
 // Add preview mode state
 let isPreviewMode = false;
-const supportedPreviewExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
+const supportedPreviewExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.mov', '.avi', '.mkv', '.webm'];
 
 // Add these properties to track key sequences
 let waitingForQuickJump = false
