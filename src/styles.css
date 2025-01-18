@@ -223,3 +223,11 @@ body {
     width: 0%;
     transition: width 0.3s ease;
 }
+
+.file-item.marked .file-name {
+    color: #ff4444;
+}
+
+.file-item.marked.selected .file-name {
+    color: #ffaaaa;
+}

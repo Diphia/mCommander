@@ -65,6 +65,7 @@ class FilePane {
         this.isSortMode = false
         this.sortTimeout = null
         this.showDetails = false
+        this.markedFiles = new Set()
         
         this.loadDirectory(this.currentPath)
     }
@@ -220,6 +221,9 @@ class FilePane {
             if (isSelected) {
                 className += this.isActive ? ' selected' : ' selected-inactive'
             }
+            if (this.markedFiles.has(file.name)) {
+                className += ' marked'
+            }
             item.className = className
 
             // Icon and name
@@ -326,6 +330,53 @@ class FilePane {
     }
 
     async moveSelectedFile(targetPath) {
+        if (this.markedFiles.size > 0) {
+            // Move all marked files
+            for (const fileName of this.markedFiles) {
+                const file = this.files.find(f => f.name === fileName);
+                if (!file) continue;
+
+                const sourcePath = path.join(this.currentPath, fileName);
+                const targetFilePath = path.join(targetPath, fileName);
+
+                try {
+                    if (fs.existsSync(targetFilePath)) {
+                        console.error('Target file already exists:', targetFilePath);
+                        showNotification('File already exists at destination', 2000, 'Cannot move');
+                        continue;
+                    }
+
+                    showProgress('Moving');
+
+                    if (file.isDirectory) {
+                        await new Promise((resolve, reject) => {
+                            try {
+                                copyDirWithProgress(sourcePath, targetFilePath, updateProgress);
+                                resolve();
+                            } catch (error) {
+                                reject(error);
+                            }
+                        });
+                        fs.rmSync(sourcePath, { recursive: true });
+                    } else {
+                        await copyFileWithProgress(sourcePath, targetFilePath, updateProgress);
+                        fs.unlinkSync(sourcePath);
+                    }
+                } catch (error) {
+                    hideProgress();
+                    console.error('Error moving file:', error);
+                    showNotification(`Error moving file: ${error.message}`);
+                }
+            }
+            hideProgress();
+            this.markedFiles.clear();
+            this.loadDirectory(this.currentPath);
+            const inactivePane = this === leftPane ? rightPane : leftPane;
+            inactivePane.loadDirectory(inactivePane.currentPath);
+            showNotification('Marked files moved', 2000);
+            return;
+        }
+
         const selected = this.files[this.selectedIndex];
         if (!selected) return;
 
@@ -372,6 +423,49 @@ class FilePane {
     }
 
     async copySelectedFile(targetPath) {
+        if (this.markedFiles.size > 0) {
+            // Copy all marked files
+            for (const fileName of this.markedFiles) {
+                const file = this.files.find(f => f.name === fileName);
+                if (!file) continue;
+
+                const sourcePath = path.join(this.currentPath, fileName);
+                const targetFilePath = path.join(targetPath, fileName);
+
+                try {
+                    if (fs.existsSync(targetFilePath)) {
+                        console.error('Target file already exists:', targetFilePath);
+                        showNotification('File already exists at destination', 2000, 'Cannot copy');
+                        continue;
+                    }
+
+                    showProgress('Copying');
+
+                    if (file.isDirectory) {
+                        await new Promise((resolve, reject) => {
+                            try {
+                                copyDirWithProgress(sourcePath, targetFilePath, updateProgress);
+                                resolve();
+                            } catch (error) {
+                                reject(error);
+                            }
+                        });
+                    } else {
+                        await copyFileWithProgress(sourcePath, targetFilePath, updateProgress);
+                    }
+                } catch (error) {
+                    hideProgress();
+                    console.error('Error copying file:', error);
+                    showNotification(`Error copying file: ${error.message}`);
+                }
+            }
+            hideProgress();
+            const inactivePane = this === leftPane ? rightPane : leftPane;
+            inactivePane.loadDirectory(inactivePane.currentPath);
+            showNotification('Marked files copied', 2000);
+            return;
+        }
+
         const selected = this.files[this.selectedIndex];
         if (!selected) return;
 
@@ -484,6 +578,23 @@ class FilePane {
         const inactivePane = this === leftPane ? rightPane : leftPane;
         inactivePane.fileList.classList.remove('preview-mode');
         inactivePane.loadDirectory(inactivePane.currentPath);
+    }
+
+    toggleMarkFile() {
+        const selected = this.files[this.selectedIndex];
+        if (!selected) return;
+
+        if (this.markedFiles.has(selected.name)) {
+            this.markedFiles.delete(selected.name);
+        } else {
+            this.markedFiles.add(selected.name);
+        }
+        this.render();
+    }
+
+    unmarkAll() {
+        this.markedFiles.clear();
+        this.render();
     }
 }
 
@@ -789,6 +900,12 @@ document.addEventListener('keydown', (e) => {
         case '(':
             activePane.showDetails = !activePane.showDetails;
             activePane.render();
+            break;
+        case 'm':
+            activePane.toggleMarkFile();
+            break;
+        case 'U':
+            activePane.unmarkAll();
             break;
     }
 }) 
