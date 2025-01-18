@@ -588,6 +588,9 @@ class FilePane {
             this.markedFiles.delete(selected.name);
         } else {
             this.markedFiles.add(selected.name);
+            // Move cursor down after marking
+            this.moveSelection(1);
+            return;
         }
         this.render();
     }
