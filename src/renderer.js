@@ -286,6 +286,7 @@ class FilePane {
             // Check if target file exists
             if (fs.existsSync(targetFilePath)) {
                 console.error('Target file already exists:', targetFilePath);
+                showNotification('File already exists at destination', 2000, 'Cannot move');
                 return;
             }
 
@@ -331,6 +332,7 @@ class FilePane {
             // Check if target file exists
             if (fs.existsSync(targetFilePath)) {
                 console.error('Target file already exists:', targetFilePath);
+                showNotification('File already exists at destination', 2000, 'Cannot copy');
                 return;
             }
 
@@ -355,7 +357,7 @@ class FilePane {
             // Refresh target directory
             const inactivePane = this === leftPane ? rightPane : leftPane;
             inactivePane.loadDirectory(inactivePane.currentPath);
-            showNotification(`Copied: ${selected.name}`);
+            showNotification(selected.name, 2000, 'Copied');
         } catch (error) {
             hideProgress();
             console.error('Error copying file:', error);
@@ -431,7 +433,7 @@ const progressLabel = progressBox.querySelector('.progress-label');
 
 function showProgress(operation) {
     progressLabel.textContent = `${operation}...`;
-    progressBox.classLimove('hidden');
+    progressBox.classList.remove('hidden');
     progressBar.style.width = '0%';
 }
 
@@ -507,7 +509,9 @@ function copyDirWithProgress(sourcePath, targetPath, onProgress) {
     }
 }
 
-function showNotification(text, duration = 2000) {
+function showNotification(text, duration = 2000, prefix = '') {
+    const notificationPrefix = document.getElementById('notificationPrefix');
+    notificationPrefix.textContent = prefix ? `${prefix}: ` : '';
     notificationText.textContent = text;
     notificationBox.classList.remove('hidden');
     setTimeout(() => {
@@ -646,7 +650,7 @@ document.addEventListener('keydown', (e) => {
             if (selectedFile) {
                 const fullPath = path.join(activePane.currentPath, selectedFile.name);
                 clipboard.writeText(fullPath);
-                showNotification(fullPath);
+                showNotification(fullPath, 2000, 'Path copied');
             }
             break;
         case 'C':
