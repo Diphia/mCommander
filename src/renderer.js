@@ -714,3 +714,8 @@ searchInput.addEventListener('input', (e) => {
         activePane.searchAndSelect(e.target.value);
     }
 }); 
+
+// Export the FilePane class for testing
+module.exports = {
+    FilePane
+} 
