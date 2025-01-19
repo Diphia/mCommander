@@ -563,7 +563,7 @@ class FilePane {
             img.style.maxHeight = '100%';
             img.style.objectFit = 'contain';
             inactivePane.fileList.appendChild(img);
-        } else if (['.mp4', '.mov', '.avi', '.mkv', '.webm'].includes(ext)) {
+        } else if (['.mp4', '.mov', '.avi', '.mkv', '.webm', '.ts'].includes(ext)) {
             // Handle video preview
             const thumbPath = getThumbPath(filePath);
             
@@ -793,7 +793,7 @@ leftPane.isActive = true // Set initial active pane
 
 // Add preview mode state
 let isPreviewMode = false;
-const supportedPreviewExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.mov', '.avi', '.mkv', '.webm'];
+const supportedPreviewExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.mov', '.avi', '.mkv', '.webm', '.ts'];
 
 // Add these properties to track key sequences
 let waitingForQuickJump = false
