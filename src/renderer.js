@@ -707,6 +707,7 @@ class FilePane {
         if (!selected) return;
 
         const filePath = path.join(this.currentPath, selected.name);
+        const nextIndex = Math.min(this.selectedIndex + 1, this.files.length - 1);
 
         try {
             showProgress('Deleting');
@@ -717,7 +718,8 @@ class FilePane {
             }
             hideProgress();
             showNotification(selected.name, 2000, 'Deleted');
-            this.loadDirectory(this.currentPath);
+            this.selectedIndex = nextIndex;
+            this.loadDirectory(this.currentPath, true);
         } catch (error) {
             hideProgress();
             console.error('Error deleting file:', error);
