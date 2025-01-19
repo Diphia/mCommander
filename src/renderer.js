@@ -667,6 +667,88 @@ class FilePane {
             showNotification(`Error moving file to trash: ${error.message}`);
         }
     }
+
+    async renameFiles() {
+        // Create a temporary file for vim
+        const tempFile = path.join(os.tmpdir(), 'mcommander-rename.txt');
+        
+        // Prepare content for vim
+        let content = '';
+        if (this.markedFiles.size > 0) {
+            // Add all marked files
+            for (const fileName of this.markedFiles) {
+                content += fileName + '\n';
+            }
+        } else {
+            // Add only selected file
+            const selected = this.files[this.selectedIndex];
+            if (!selected) return;
+            content += selected.name;
+        }
+
+        // Write content to temp file
+        fs.writeFileSync(tempFile, content);
+
+        // Open vim (use mvim -f for macOS)
+        return new Promise((resolve, reject) => {
+            const vimCmd = process.platform === 'darwin' ? 'mvim -f' : 'vim';
+            const vim = exec(`${vimCmd} "${tempFile}"`, (error, stdout, stderr) => {
+                if (error) {
+                    console.error('Error running vim:', error);
+                    showNotification('Error running vim: ' + error.message);
+                    fs.unlinkSync(tempFile);
+                    reject(error);
+                    return;
+                }
+
+                try {
+                    // Read the edited content
+                    const newNames = fs.readFileSync(tempFile, 'utf8').trim().split('\n');
+                    
+                    if (this.markedFiles.size > 0) {
+                        // Batch rename marked files
+                        const markedFilesArray = Array.from(this.markedFiles);
+                        if (newNames.length !== markedFilesArray.length) {
+                            throw new Error('Number of names does not match number of files');
+                        }
+
+                        markedFilesArray.forEach((oldName, index) => {
+                            const newName = newNames[index].trim();
+                            if (newName && newName !== oldName) {
+                                const oldPath = path.join(this.currentPath, oldName);
+                                const newPath = path.join(this.currentPath, newName);
+                                fs.renameSync(oldPath, newPath);
+                            }
+                        });
+
+                        this.markedFiles.clear();
+                        showNotification('Files renamed', 2000);
+                    } else {
+                        // Rename single file
+                        const selected = this.files[this.selectedIndex];
+                        const newName = newNames[0].trim();
+                        if (newName && newName !== selected.name) {
+                            const oldPath = path.join(this.currentPath, selected.name);
+                            const newPath = path.join(this.currentPath, newName);
+                            fs.renameSync(oldPath, newPath);
+                            showNotification(selected.name, 2000, 'Renamed to ' + newName);
+                        }
+                    }
+
+                    // Reload directory to show changes
+                    this.loadDirectory(this.currentPath, true);
+                } catch (err) {
+                    console.error('Error renaming file(s):', err);
+                    showNotification('Error renaming file(s): ' + err.message);
+                    reject(err);
+                } finally {
+                    // Clean up temp file
+                    fs.unlinkSync(tempFile);
+                }
+                resolve();
+            });
+        });
+    }
 }
 
 // Initialize both panes
@@ -980,6 +1062,9 @@ document.addEventListener('keydown', (e) => {
             break;
         case 'D':
             activePane.deleteSelectedFiles();
+            break;
+        case 'i':
+            activePane.renameFiles();
             break;
     }
 }) 
