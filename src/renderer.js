@@ -37,20 +37,49 @@ async function generateVideoThumbnail(videoPath, outputPath) {
     return new Promise(async (resolve, reject) => {
         try {
             const duration = await getVideoDuration(videoPath);
-            // Calculate timestamps for 9 frames
-            const timestamps = Array.from({length: 9}, (_, i) => duration * i / 9)
-                .map(t => t.toFixed(2))
-                .join(',');
-            // Generate a 3x3 tile of thumbnails using select filter with specific timestamps
-            const cmd = `ffmpeg -i "${videoPath}" -vf "select='if(eq(n,0),1,gte(t-prev_selected_t,${duration/9}))',scale=320:180,tile=3x3:nb_frames=9" -frames:v 1 "${outputPath}"`;
-            exec(cmd, (error) => {
-                if (error) {
-                    console.error('Error generating thumbnail:', error);
-                    reject(error);
-                } else {
-                    resolve();
-                }
+            const interval = duration / 10;  // Divide by 10 to get 9 evenly spaced frames
+            const tempDir = path.join(getThumbCacheDir(), 'temp');
+            
+            // Create temp directory for individual frames
+            if (!fs.existsSync(tempDir)) {
+                fs.mkdirSync(tempDir, { recursive: true });
+            }
+
+            // Extract 9 frames at evenly spaced timestamps
+            for (let i = 1; i <= 9; i++) {
+                const timestamp = interval * i;
+                const frameCmd = `ffmpeg -y -ss ${timestamp.toFixed(2)} -i "${videoPath}" -frames:v 1 -q:v 2 "${path.join(tempDir, `thumb_${i}.jpg`)}"`;
+                await new Promise((res, rej) => {
+                    exec(frameCmd, (error) => {
+                        if (error) rej(error);
+                        else res();
+                    });
+                });
+            }
+
+            // Combine all thumbs into a 3x3 grid
+            const combineCmd = `ffmpeg -y -i "${path.join(tempDir, 'thumb_%d.jpg')}" -filter_complex "tile=3x3" "${outputPath}"`;
+            await new Promise((res, rej) => {
+                exec(combineCmd, (error) => {
+                    if (error) {
+                        console.error('Error generating thumbnail:', error);
+                        rej(error);
+                    } else {
+                        // Clean up temp files
+                        for (let i = 1; i <= 9; i++) {
+                            const tempFile = path.join(tempDir, `thumb_${i}.jpg`);
+                            if (fs.existsSync(tempFile)) {
+                                fs.unlinkSync(tempFile);
+                            }
+                        }
+                        if (fs.existsSync(tempDir)) {
+                            fs.rmdirSync(tempDir);
+                        }
+                        res();
+                    }
+                });
             });
+            resolve();
         } catch (error) {
             reject(error);
         }
