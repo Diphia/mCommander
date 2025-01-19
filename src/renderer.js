@@ -37,9 +37,12 @@ async function generateVideoThumbnail(videoPath, outputPath) {
     return new Promise(async (resolve, reject) => {
         try {
             const duration = await getVideoDuration(videoPath);
-            const interval = Math.floor(duration/9);
-            // Generate a 3x3 tile of thumbnails
-            const cmd = `ffmpeg -i "${videoPath}" -vf "select=not(mod(n\\,${interval})),scale=320:180,tile=3x3" -frames:v 1 "${outputPath}"`;
+            // Calculate timestamps for 9 frames
+            const timestamps = Array.from({length: 9}, (_, i) => duration * i / 9)
+                .map(t => t.toFixed(2))
+                .join(',');
+            // Generate a 3x3 tile of thumbnails using select filter with specific timestamps
+            const cmd = `ffmpeg -i "${videoPath}" -vf "select='if(eq(n,0),1,gte(t-prev_selected_t,${duration/9}))',scale=320:180,tile=3x3:nb_frames=9" -frames:v 1 "${outputPath}"`;
             exec(cmd, (error) => {
                 if (error) {
                     console.error('Error generating thumbnail:', error);
