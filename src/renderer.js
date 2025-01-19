@@ -1081,6 +1081,14 @@ function exitSearchMode() {
     selectedSearchIndex = -1;
 }
 
+function markAllMatchedFiles() {
+    searchResultItems.forEach(file => {
+        activePane.markedFiles.add(file.name);
+    });
+    activePane.render();
+    showNotification(`${searchResultItems.length} files marked`, 2000);
+}
+
 // Handle keyboard events
 document.addEventListener('keydown', (e) => {
     if (isSearchMode) {
@@ -1099,6 +1107,13 @@ document.addEventListener('keydown', (e) => {
                 e.preventDefault();
                 navigateSearchResults(-1);
                 return;
+            case 'm':
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    markAllMatchedFiles();
+                    return;
+                }
+                break;
         }
         return;
     }
