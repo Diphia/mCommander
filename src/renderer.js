@@ -2,7 +2,6 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 const { shell, clipboard } = require('electron')
-const { remote } = require('electron')
 const { quickJumpMappings } = require('./config')
 const crypto = require('crypto')
 const { exec } = require('child_process')
@@ -837,9 +836,6 @@ class FilePane {
         return new Promise((resolve, reject) => {
             const vimCmd = process.platform === 'darwin' ? 'mvim -f' : 'vim';
             const vim = exec(`${vimCmd} "${tempFile}"`, (error, stdout, stderr) => {
-                // Focus back to mCommander window
-                remote.getCurrentWindow().focus();
-
                 if (error) {
                     console.error('Error running vim:', error);
                     showNotification('Error running vim: ' + error.message);
