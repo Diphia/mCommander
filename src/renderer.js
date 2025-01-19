@@ -998,6 +998,18 @@ function showSearchResults(query) {
     }
 
     searchResults.innerHTML = '';
+    
+    // Add header with match count
+    const header = document.createElement('div');
+    header.className = 'search-results-header';
+    header.textContent = `${searchResultItems.length} match${searchResultItems.length === 1 ? '' : 'es'}`;
+    searchResults.appendChild(header);
+
+    // Create scrollable list container
+    const listContainer = document.createElement('div');
+    listContainer.className = 'search-results-list';
+    searchResults.appendChild(listContainer);
+
     searchResultItems.forEach((file, index) => {
         const item = document.createElement('div');
         item.className = `search-result-item${index === selectedSearchIndex ? ' selected' : ''}`;
@@ -1011,7 +1023,7 @@ function showSearchResults(query) {
         
         item.appendChild(icon);
         item.appendChild(name);
-        searchResults.appendChild(item);
+        listContainer.appendChild(item);
     });
 
     searchResults.classList.remove('hidden');
@@ -1023,7 +1035,7 @@ function showSearchResults(query) {
 
 function updateSearchSelection() {
     // Update search results highlighting
-    const items = searchResults.getElementsByClassName('search-result-item');
+    const items = searchResults.querySelector('.search-results-list').getElementsByClassName('search-result-item');
     Array.from(items).forEach((item, index) => {
         item.classList.toggle('selected', index === selectedSearchIndex);
     });

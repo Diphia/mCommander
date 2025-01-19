@@ -244,6 +244,20 @@ body {
     overflow-y: auto;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     z-index: 999;
+    display: flex;
+    flex-direction: column;
+}
+
+.search-results-header {
+    padding: 8px 12px;
+    color: #888;
+    border-bottom: 1px solid #444;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.search-results-list {
+    overflow-y: auto;
 }
 
 .search-results.hidden {
