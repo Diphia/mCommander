@@ -33,12 +33,12 @@ async function getVideoDuration(videoPath) {
     });
 }
 
-async function generateVideoThumbnail(videoPath, outputPath) {
+async function generateVideoThumbnail(videoPath, outputPath, previewProcess) {
     return new Promise(async (resolve, reject) => {
         try {
             const duration = await getVideoDuration(videoPath);
             const interval = duration / 10;  // Divide by 10 to get 9 evenly spaced frames
-            const tempDir = path.join(getThumbCacheDir(), 'temp');
+            const tempDir = previewProcess.tempDir;
             
             // Create temp directory for individual frames
             if (!fs.existsSync(tempDir)) {
@@ -47,6 +47,11 @@ async function generateVideoThumbnail(videoPath, outputPath) {
 
             // Extract 9 frames at evenly spaced timestamps
             for (let i = 1; i <= 9; i++) {
+                if (previewProcess.cancel) {
+                    reject(new Error('Preview generation cancelled'));
+                    return;
+                }
+
                 const timestamp = interval * i;
                 const frameCmd = `ffmpeg -y -ss ${timestamp.toFixed(2)} -i "${videoPath}" -frames:v 1 -q:v 2 "${path.join(tempDir, `thumb_${i}.jpg`)}"`;
                 await new Promise((res, rej) => {
@@ -57,6 +62,11 @@ async function generateVideoThumbnail(videoPath, outputPath) {
                 });
             }
 
+            if (previewProcess.cancel) {
+                reject(new Error('Preview generation cancelled'));
+                return;
+            }
+
             // Combine all thumbs into a 3x3 grid
             const combineCmd = `ffmpeg -y -i "${path.join(tempDir, 'thumb_%d.jpg')}" -filter_complex "tile=3x3" "${outputPath}"`;
             await new Promise((res, rej) => {
@@ -65,16 +75,6 @@ async function generateVideoThumbnail(videoPath, outputPath) {
                         console.error('Error generating thumbnail:', error);
                         rej(error);
                     } else {
-                        // Clean up temp files
-                        for (let i = 1; i <= 9; i++) {
-                            const tempFile = path.join(tempDir, `thumb_${i}.jpg`);
-                            if (fs.existsSync(tempFile)) {
-                                fs.unlinkSync(tempFile);
-                            }
-                        }
-                        if (fs.existsSync(tempDir)) {
-                            fs.rmdirSync(tempDir);
-                        }
                         res();
                     }
                 });
@@ -98,6 +98,7 @@ class FilePane {
         this.sortTimeout = null
         this.showDetails = false
         this.markedFiles = new Set()
+        this.currentPreviewProcess = null // Track current preview generation process
         
         this.loadDirectory(this.currentPath)
     }
@@ -576,26 +577,54 @@ class FilePane {
                 img.style.objectFit = 'contain';
                 inactivePane.fileList.appendChild(img);
             } else {
+                // Cancel any ongoing preview generation
+                if (this.currentPreviewProcess) {
+                    this.currentPreviewProcess.cancel = true;
+                }
+
                 // Generate thumbnail
                 const loadingDiv = document.createElement('div');
                 loadingDiv.textContent = 'Generating video preview...';
                 loadingDiv.className = 'preview-loading';
                 inactivePane.fileList.appendChild(loadingDiv);
 
-                generateVideoThumbnail(filePath, thumbPath)
+                const previewProcess = {
+                    cancel: false,
+                    tempDir: path.join(getThumbCacheDir(), 'temp_' + Date.now())
+                };
+                this.currentPreviewProcess = previewProcess;
+
+                generateVideoThumbnail(filePath, thumbPath, previewProcess)
                     .then(() => {
-                        inactivePane.fileList.innerHTML = '';
-                        const img = document.createElement('img');
-                        img.src = thumbPath;
-                        img.style.maxWidth = '100%';
-                        img.style.maxHeight = '100%';
-                        img.style.objectFit = 'contain';
-                        inactivePane.fileList.appendChild(img);
+                        if (!previewProcess.cancel) {
+                            inactivePane.fileList.innerHTML = '';
+                            const img = document.createElement('img');
+                            img.src = thumbPath;
+                            img.style.maxWidth = '100%';
+                            img.style.maxHeight = '100%';
+                            img.style.objectFit = 'contain';
+                            inactivePane.fileList.appendChild(img);
+                        }
                     })
                     .catch(error => {
-                        loadingDiv.className = 'preview-error';
-                        loadingDiv.textContent = 'Error generating video preview';
-                        console.error('Error generating video preview:', error);
+                        if (!previewProcess.cancel) {
+                            loadingDiv.className = 'preview-error';
+                            loadingDiv.textContent = 'Error generating video preview';
+                            console.error('Error generating video preview:', error);
+                        }
+                    })
+                    .finally(() => {
+                        // Clean up temp directory if it exists
+                        if (fs.existsSync(previewProcess.tempDir)) {
+                            try {
+                                fs.rmSync(previewProcess.tempDir, { recursive: true });
+                            } catch (error) {
+                                console.error('Error cleaning up temp directory:', error);
+                            }
+                        }
+                        if (this.currentPreviewProcess === previewProcess) {
+                            this.currentPreviewProcess = null;
+                        }
                     });
             }
         } else {
@@ -607,6 +636,20 @@ class FilePane {
     }
 
     clearPreview() {
+        // Cancel any ongoing preview generation
+        if (this.currentPreviewProcess) {
+            this.currentPreviewProcess.cancel = true;
+            // Clean up temp directory if it exists
+            if (fs.existsSync(this.currentPreviewProcess.tempDir)) {
+                try {
+                    fs.rmSync(this.currentPreviewProcess.tempDir, { recursive: true });
+                } catch (error) {
+                    console.error('Error cleaning up temp directory:', error);
+                }
+            }
+            this.currentPreviewProcess = null;
+        }
+
         const inactivePane = this === leftPane ? rightPane : leftPane;
         inactivePane.fileList.classList.remove('preview-mode');
         inactivePane.loadDirectory(inactivePane.currentPath);
