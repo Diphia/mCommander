@@ -231,3 +231,45 @@ body {
 .file-item.marked.selected .file-name {
     color: #ffaaaa;
 }
+
+.search-results {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2c2c2c;
+    border-radius: 4px;
+    max-height: 300px;
+    width: 500px;
+    overflow-y: auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 999;
+}
+
+.search-results.hidden {
+    display: none;
+}
+
+.search-result-item {
+    padding: 8px 12px;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.search-result-item.selected {
+    background-color: #0066cc;
+}
+
+.search-result-item i {
+    width: 16px;
+}
+
+.search-result-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

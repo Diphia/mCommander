@@ -885,6 +885,11 @@ const progressBox = document.getElementById('progressBox');
 const progressBar = document.getElementById('progressBar');
 const progressLabel = progressBox.querySelector('.progress-label');
 
+// Add these properties near the other global variables
+const searchResults = document.getElementById('searchResults');
+let searchResultItems = [];
+let selectedSearchIndex = -1;
+
 function showProgress(operation) {
     progressLabel.textContent = `${operation}...`;
     progressBox.classList.remove('hidden');
@@ -973,29 +978,115 @@ function showNotification(text, duration = 2000, prefix = '') {
     }, duration);
 }
 
+function showSearchResults(query) {
+    if (!query) {
+        searchResults.classList.add('hidden');
+        searchResultItems = [];
+        selectedSearchIndex = -1;
+        return;
+    }
+
+    const lowerQuery = query.toLowerCase();
+    searchResultItems = activePane.files.filter(file => 
+        file.name.toLowerCase().includes(lowerQuery)
+    );
+
+    if (searchResultItems.length === 0) {
+        searchResults.classList.add('hidden');
+        selectedSearchIndex = -1;
+        return;
+    }
+
+    searchResults.innerHTML = '';
+    searchResultItems.forEach((file, index) => {
+        const item = document.createElement('div');
+        item.className = `search-result-item${index === selectedSearchIndex ? ' selected' : ''}`;
+        
+        const icon = document.createElement('i');
+        icon.className = file.isDirectory ? 'fas fa-folder' : 'fas fa-file';
+        
+        const name = document.createElement('span');
+        name.className = 'search-result-name';
+        name.textContent = file.name;
+        
+        item.appendChild(icon);
+        item.appendChild(name);
+        searchResults.appendChild(item);
+    });
+
+    searchResults.classList.remove('hidden');
+    if (selectedSearchIndex === -1 && searchResultItems.length > 0) {
+        selectedSearchIndex = 0;
+        updateSearchSelection();
+    }
+}
+
+function updateSearchSelection() {
+    // Update search results highlighting
+    const items = searchResults.getElementsByClassName('search-result-item');
+    Array.from(items).forEach((item, index) => {
+        item.classList.toggle('selected', index === selectedSearchIndex);
+    });
+
+    // Update file pane selection
+    if (selectedSearchIndex >= 0 && selectedSearchIndex < searchResultItems.length) {
+        const selectedFile = searchResultItems[selectedSearchIndex];
+        const fileIndex = activePane.files.findIndex(f => f.name === selectedFile.name);
+        if (fileIndex !== -1) {
+            activePane.selectedIndex = fileIndex;
+            activePane.render();
+        }
+    }
+
+    // Ensure selected item is visible
+    const selectedItem = items[selectedSearchIndex];
+    if (selectedItem) {
+        selectedItem.scrollIntoView({ block: 'nearest' });
+    }
+}
+
+function navigateSearchResults(direction) {
+    if (searchResultItems.length === 0) return;
+
+    selectedSearchIndex = (selectedSearchIndex + direction + searchResultItems.length) % searchResultItems.length;
+    updateSearchSelection();
+}
+
 function enterSearchMode() {
     isSearchMode = true;
     searchBox.classList.remove('hidden');
     searchInput.value = '';
     searchInput.focus();
+    showSearchResults('');
 }
 
 function exitSearchMode() {
     isSearchMode = false;
     searchBox.classList.add('hidden');
+    searchResults.classList.add('hidden');
     searchInput.value = '';
+    searchResultItems = [];
+    selectedSearchIndex = -1;
 }
 
 // Handle keyboard events
 document.addEventListener('keydown', (e) => {
     if (isSearchMode) {
-        if (e.key === 'Escape') {
-            exitSearchMode();
-            return;
-        }
-        if (e.key === 'Enter') {
-            exitSearchMode();
-            return;
+        switch (e.key) {
+            case 'Escape':
+                exitSearchMode();
+                return;
+            case 'Enter':
+                exitSearchMode();
+                return;
+            case 'ArrowDown':
+                e.preventDefault();
+                navigateSearchResults(1);
+                return;
+            case 'ArrowUp':
+                e.preventDefault();
+                navigateSearchResults(-1);
+                return;
         }
         return;
     }
@@ -1180,7 +1271,7 @@ document.addEventListener('keydown', (e) => {
 // Add search input handler
 searchInput.addEventListener('input', (e) => {
     if (isSearchMode) {
-        activePane.searchAndSelect(e.target.value);
+        showSearchResults(e.target.value);
     }
 }); 
 
