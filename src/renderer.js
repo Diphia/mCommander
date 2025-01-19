@@ -676,70 +676,52 @@ class FilePane {
     }
 
     async deleteSelectedFiles() {
-        const trashDir = path.join(os.homedir(), 'temp', '.trash');
-        
-        // Create trash directory if it doesn't exist
-        if (!fs.existsSync(trashDir)) {
-            fs.mkdirSync(trashDir, { recursive: true });
-        }
-
         if (this.markedFiles.size > 0) {
             // Delete all marked files
             for (const fileName of this.markedFiles) {
                 const file = this.files.find(f => f.name === fileName);
                 if (!file) continue;
 
-                const sourcePath = path.join(this.currentPath, fileName);
-                const targetPath = path.join(trashDir, fileName);
+                const filePath = path.join(this.currentPath, fileName);
 
                 try {
-                    // If file with same name exists in trash, append timestamp
-                    let finalTargetPath = targetPath;
-                    if (fs.existsSync(targetPath)) {
-                        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                        const ext = path.extname(fileName);
-                        const base = path.basename(fileName, ext);
-                        finalTargetPath = path.join(trashDir, `${base}_${timestamp}${ext}`);
+                    showProgress('Deleting');
+                    if (file.isDirectory) {
+                        fs.rmSync(filePath, { recursive: true });
+                    } else {
+                        fs.unlinkSync(filePath);
                     }
-
-                    showProgress('Moving to trash');
-                    await this.moveSelectedFile(trashDir);
                 } catch (error) {
-                    console.error('Error moving file to trash:', error);
-                    showNotification(`Error moving file to trash: ${error.message}`);
+                    console.error('Error deleting file:', error);
+                    showNotification(`Error deleting file: ${error.message}`);
                 }
             }
             hideProgress();
             this.markedFiles.clear();
             this.loadDirectory(this.currentPath);
-            showNotification('Marked files moved to trash', 2000);
+            showNotification('Marked files deleted', 2000);
             return;
         }
 
         const selected = this.files[this.selectedIndex];
         if (!selected) return;
 
-        const sourcePath = path.join(this.currentPath, selected.name);
-        const targetPath = path.join(trashDir, selected.name);
+        const filePath = path.join(this.currentPath, selected.name);
 
         try {
-            // If file with same name exists in trash, append timestamp
-            let finalTargetPath = targetPath;
-            if (fs.existsSync(targetPath)) {
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const ext = path.extname(selected.name);
-                const base = path.basename(selected.name, ext);
-                finalTargetPath = path.join(trashDir, `${base}_${timestamp}${ext}`);
+            showProgress('Deleting');
+            if (selected.isDirectory) {
+                fs.rmSync(filePath, { recursive: true });
+            } else {
+                fs.unlinkSync(filePath);
             }
-
-            showProgress('Moving to trash');
-            await this.moveSelectedFile(trashDir);
             hideProgress();
-            showNotification(selected.name, 2000, 'Moved to trash');
+            showNotification(selected.name, 2000, 'Deleted');
+            this.loadDirectory(this.currentPath);
         } catch (error) {
             hideProgress();
-            console.error('Error moving file to trash:', error);
-            showNotification(`Error moving file to trash: ${error.message}`);
+            console.error('Error deleting file:', error);
+            showNotification(`Error deleting file: ${error.message}`);
         }
     }
 
