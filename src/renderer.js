@@ -2,6 +2,7 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 const { shell, clipboard } = require('electron')
+const { remote } = require('electron')
 const { quickJumpMappings } = require('./config')
 const crypto = require('crypto')
 const { exec } = require('child_process')
@@ -824,6 +825,55 @@ class FilePane {
             });
         });
     }
+
+    async createDirectory() {
+        // Create a temporary file for vim
+        const tempFile = path.join(os.tmpdir(), 'mcommander-mkdir.txt');
+        
+        // Write empty content to temp file
+        fs.writeFileSync(tempFile, '');
+
+        // Open vim (use mvim -f for macOS)
+        return new Promise((resolve, reject) => {
+            const vimCmd = process.platform === 'darwin' ? 'mvim -f' : 'vim';
+            const vim = exec(`${vimCmd} "${tempFile}"`, (error, stdout, stderr) => {
+                // Focus back to mCommander window
+                remote.getCurrentWindow().focus();
+
+                if (error) {
+                    console.error('Error running vim:', error);
+                    showNotification('Error running vim: ' + error.message);
+                    fs.unlinkSync(tempFile);
+                    reject(error);
+                    return;
+                }
+
+                try {
+                    // Read the edited content
+                    const dirName = fs.readFileSync(tempFile, 'utf8').trim();
+                    
+                    if (dirName) {
+                        const newDirPath = path.join(this.currentPath, dirName);
+                        if (fs.existsSync(newDirPath)) {
+                            throw new Error('Directory already exists');
+                        }
+                        fs.mkdirSync(newDirPath);
+                        this.loadDirectory(this.currentPath);
+                        showNotification(dirName, 2000, 'Directory created');
+                    }
+
+                    // Clean up temp file
+                    fs.unlinkSync(tempFile);
+                    resolve();
+                } catch (error) {
+                    console.error('Error creating directory:', error);
+                    showNotification(`Error creating directory: ${error.message}`);
+                    fs.unlinkSync(tempFile);
+                    reject(error);
+                }
+            });
+        });
+    }
 }
 
 // Initialize both panes
@@ -1140,6 +1190,9 @@ document.addEventListener('keydown', (e) => {
             break;
         case 'i':
             activePane.renameFiles();
+            break;
+        case '+':
+            activePane.createDirectory();
             break;
     }
 }) 
