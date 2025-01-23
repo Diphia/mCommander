@@ -99,6 +99,7 @@ class FilePane {
         this.showDetails = false
         this.markedFiles = new Set()
         this.currentPreviewProcess = null // Track current preview generation process
+        this.currentSortType = 'n' // Default sort by name
         
         this.loadDirectory(this.currentPath)
     }
@@ -124,13 +125,20 @@ class FilePane {
                         return null;
                     }
                 })
-                .filter(file => file !== null)
-                .sort((a, b) => {
+                .filter(file => file !== null);
+
+            // Apply current sort type
+            if (this.currentSortType) {
+                this.sortFiles(this.currentSortType, false);
+            } else {
+                // Default sort: directories first, then by name
+                this.files.sort((a, b) => {
                     if (a.isDirectory === b.isDirectory) {
                         return a.name.localeCompare(b.name);
                     }
                     return b.isDirectory - a.isDirectory;
                 });
+            }
 
             this.currentPath = dirPath;
             
@@ -153,8 +161,9 @@ class FilePane {
         }
     }
 
-    sortFiles(sortType) {
+    sortFiles(sortType, exitAfterSort = true) {
         const currentFile = this.files[this.selectedIndex]?.name;
+        this.currentSortType = sortType;  // Store the current sort type
         
         switch (sortType) {
             case 'm': // Modified time
@@ -200,7 +209,9 @@ class FilePane {
         }
         
         this.render();
-        this.exitSortMode();
+        if (exitAfterSort) {
+            this.exitSortMode();
+        }
     }
 
     enterSortMode() {
