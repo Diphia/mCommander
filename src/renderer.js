@@ -977,7 +977,6 @@ function showNotification(text, duration = 2000, prefix = '') {
         notificationBox.classList.add('hidden');
     }, duration);
 }
-
 function showSearchResults(query) {
     if (!query) {
         searchResults.classList.add('hidden');
@@ -998,7 +997,7 @@ function showSearchResults(query) {
     }
 
     searchResults.innerHTML = '';
-    
+
     // Add header with match count
     const header = document.createElement('div');
     header.className = 'search-results-header';
@@ -1012,7 +1011,7 @@ function showSearchResults(query) {
 
     searchResultItems.forEach((file, index) => {
         const item = document.createElement('div');
-        item.className = `search-result-item${index === selectedSearchIndex ? ' selected' : ''}`;
+        item.className = 'search-result-item';
         
         const icon = document.createElement('i');
         icon.className = file.isDirectory ? 'fas fa-folder' : 'fas fa-file';
@@ -1026,12 +1025,13 @@ function showSearchResults(query) {
         listContainer.appendChild(item);
     });
 
+    // Always jump to first result as soon as there's a match
+    selectedSearchIndex = 0;
+    updateSearchSelection();
+
     searchResults.classList.remove('hidden');
-    if (selectedSearchIndex === -1 && searchResultItems.length > 0) {
-        selectedSearchIndex = 0;
-        updateSearchSelection();
-    }
 }
+
 
 function updateSearchSelection() {
     // Update search results highlighting
