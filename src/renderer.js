@@ -1300,6 +1300,11 @@ document.addEventListener('keydown', (e) => {
         case 'i':
             activePane.renameFiles();
             break;
+        case '=':
+            const inactivePaneForSync = activePane === leftPane ? rightPane : leftPane;
+            inactivePaneForSync.loadDirectory(activePane.currentPath);
+            showNotification('Synced inactive pane path');
+            break;
         case '+':
             activePane.createDirectory();
             break;
