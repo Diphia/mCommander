@@ -1292,6 +1292,12 @@ document.addEventListener('keydown', (e) => {
         case '+':
             activePane.createDirectory();
             break;
+        case 'l':
+            if (e.ctrlKey) {
+                e.preventDefault()
+                activePane.centerCurrentFile()
+            }
+            break
     }
 }) 
 
