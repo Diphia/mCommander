@@ -690,6 +690,15 @@ class FilePane {
                         previewDiv.textContent = `Error reading archive: ${error.message}`;
                     }
                 });
+        } else if (ext === '.pdf') {
+            // Handle PDF files with iframe preview
+            const iframe = document.createElement('iframe');
+            iframe.className = 'pdf-preview';
+            iframe.src = `file://${filePath}`;
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.border = 'none';
+            inactivePane.fileList.appendChild(iframe);
         } else {
             // Handle plain text files
             const textExtensions = [
@@ -995,7 +1004,7 @@ leftPane.isActive = true // Set initial active pane
 
 // Add preview mode state
 let isPreviewMode = false;
-const supportedPreviewExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.mov', '.avi', '.mkv', '.webm', '.ts'];
+const supportedPreviewExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.mov', '.avi', '.mkv', '.webm', '.ts', '.pdf'];
 
 // Add these properties to track key sequences
 let waitingForQuickJump = false
