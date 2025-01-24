@@ -639,10 +639,67 @@ class FilePane {
                     });
             }
         } else {
-            const message = document.createElement('div');
-            message.textContent = 'File type not supported for preview';
-            message.className = 'preview-error';
-            inactivePane.fileList.appendChild(message);
+            // Handle plain text files
+            const textExtensions = [
+                // Programming Languages
+                '.txt', '.md', '.json', '.js', '.py', '.html', '.css', '.java', '.cpp', '.c', '.h', '.hpp', 
+                '.cs', '.go', '.rs', '.rb', '.php', '.swift', '.kt', '.scala', '.ts', '.tsx', '.jsx',
+                '.r', '.m', '.mm', '.sh', '.bash', '.zsh', '.fish', '.pl', '.pm', '.lua', '.sql',
+                // Config Files
+                '.log', '.yml', '.yaml', '.xml', '.csv', '.ini', '.conf', '.config', '.toml', '.properties',
+                '.env', '.rc', '.gitignore', '.dockerignore', '.editorconfig', '.htaccess',
+                // Web Development
+                '.scss', '.sass', '.less', '.vue', '.svelte', '.jade', '.pug', '.ejs', '.hbs', '.graphql',
+                // Build & Package Files
+                '.gradle', '.pom', '.maven', '.cargo', '.lock', '.podspec', '.gemspec'
+            ];
+            
+            const tryShowAsText = () => {
+                try {
+                    const content = fs.readFileSync(filePath, 'utf8');
+                    // Check if content is mostly text (no null bytes or too many non-printable characters)
+                    const isBinary = /[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(content.slice(0, 1000));
+                    if (!isBinary) {
+                        const pre = document.createElement('pre');
+                        pre.className = 'text-preview';
+                        pre.textContent = content;
+                        inactivePane.fileList.appendChild(pre);
+                        return true;
+                    }
+                } catch (error) {
+                    return false;
+                }
+                return false;
+            };
+
+            if (textExtensions.includes(ext)) {
+                if (!tryShowAsText()) {
+                    const message = document.createElement('div');
+                    message.textContent = 'Error reading text file';
+                    message.className = 'preview-error';
+                    inactivePane.fileList.appendChild(message);
+                }
+            } else {
+                // For unsupported extensions, try to show content if file is small (< 1MB)
+                try {
+                    const stats = fs.statSync(filePath);
+                    const MAX_SIZE = 1024 * 1024; // 1MB
+                    
+                    if (stats.size <= MAX_SIZE && tryShowAsText()) {
+                        return;
+                    }
+                    
+                    const message = document.createElement('div');
+                    message.textContent = `File type not supported for preview (${this.formatFileSize(stats.size)})`;
+                    message.className = 'preview-error';
+                    inactivePane.fileList.appendChild(message);
+                } catch (error) {
+                    const message = document.createElement('div');
+                    message.textContent = 'Error checking file';
+                    message.className = 'preview-error';
+                    inactivePane.fileList.appendChild(message);
+                }
+            }
         }
     }
 
