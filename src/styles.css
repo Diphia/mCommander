@@ -312,3 +312,21 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+.archive-preview {
+    padding: 10px;
+    height: 100%;
+    overflow: auto;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    white-space: pre;
+    background-color: #2c2c2c;
+    color: #fff;
+}
+
+.archive-content {
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #fff;
+}

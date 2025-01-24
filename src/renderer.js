@@ -638,6 +638,58 @@ class FilePane {
                         }
                     });
             }
+        } else if (['.zip', '.rar', '.tar.gz', '.tgz'].includes(ext)) {
+            // Handle archive preview
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'archive-preview';
+            inactivePane.fileList.appendChild(previewDiv);
+
+            // Show loading message
+            previewDiv.textContent = 'Loading archive contents...';
+
+            // Create a function to execute command and handle output
+            const executeCommand = (cmd) => {
+                return new Promise((resolve, reject) => {
+                    exec(cmd, (error, stdout, stderr) => {
+                        if (error) {
+                            reject(error);
+                            return;
+                        }
+                        resolve(stdout);
+                    });
+                });
+            };
+
+            // Choose the appropriate command based on file extension
+            let command;
+            if (ext === '.zip') {
+                command = `unzip -l "${filePath}"`;
+            } else if (ext === '.rar') {
+                command = `unrar l "${filePath}"`;
+            } else if (['.tar.gz', '.tgz'].includes(ext)) {
+                command = `tar -tvf "${filePath}"`;
+            }
+
+            // Execute command and show output
+            executeCommand(command)
+                .then(output => {
+                    const pre = document.createElement('pre');
+                    pre.className = 'archive-content';
+                    pre.textContent = output;
+                    previewDiv.innerHTML = '';
+                    previewDiv.appendChild(pre);
+                })
+                .catch(error => {
+                    previewDiv.className = 'preview-error';
+                    if (error.message.includes('command not found')) {
+                        previewDiv.textContent = `Required command not found. Please install the necessary tools:\n` +
+                            `For ZIP files: unzip\n` +
+                            `For RAR files: unrar\n` +
+                            `For TAR files: tar`;
+                    } else {
+                        previewDiv.textContent = `Error reading archive: ${error.message}`;
+                    }
+                });
         } else {
             // Handle plain text files
             const textExtensions = [
