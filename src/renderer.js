@@ -2,7 +2,7 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 const { shell, clipboard } = require('electron')
-const { quickJumpMappings } = require('./config')
+const { quickJumpMappings, getFfmpegPath, getFfprobePath } = require('./config')
 const crypto = require('crypto')
 const { exec } = require('child_process')
 
@@ -22,7 +22,8 @@ function getThumbPath(filePath) {
 
 async function getVideoDuration(videoPath) {
     return new Promise((resolve, reject) => {
-        const cmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${videoPath}"`;
+        const ffprobePath = getFfprobePath();
+        const cmd = `${ffprobePath} -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${videoPath}"`;
         exec(cmd, (error, stdout) => {
             if (error) {
                 reject(error);
@@ -36,6 +37,7 @@ async function getVideoDuration(videoPath) {
 async function generateVideoThumbnail(videoPath, outputPath, previewProcess) {
     return new Promise(async (resolve, reject) => {
         try {
+            const ffmpegPath = getFfmpegPath();
             const duration = await getVideoDuration(videoPath);
             const interval = duration / 10;  // Divide by 10 to get 9 evenly spaced frames
             const tempDir = previewProcess.tempDir;
@@ -53,7 +55,7 @@ async function generateVideoThumbnail(videoPath, outputPath, previewProcess) {
                 }
 
                 const timestamp = interval * i;
-                const frameCmd = `ffmpeg -y -ss ${timestamp.toFixed(2)} -i "${videoPath}" -frames:v 1 -q:v 2 "${path.join(tempDir, `thumb_${i}.jpg`)}"`;
+                const frameCmd = `${ffmpegPath} -y -ss ${timestamp.toFixed(2)} -i "${videoPath}" -frames:v 1 -q:v 2 "${path.join(tempDir, `thumb_${i}.jpg`)}"`;
                 await new Promise((res, rej) => {
                     exec(frameCmd, (error) => {
                         if (error) rej(error);
@@ -68,7 +70,7 @@ async function generateVideoThumbnail(videoPath, outputPath, previewProcess) {
             }
 
             // Combine all thumbs into a 3x3 grid
-            const combineCmd = `ffmpeg -y -i "${path.join(tempDir, 'thumb_%d.jpg')}" -filter_complex "tile=3x3" "${outputPath}"`;
+            const combineCmd = `${ffmpegPath} -y -i "${path.join(tempDir, 'thumb_%d.jpg')}" -filter_complex "tile=3x3" "${outputPath}"`;
             await new Promise((res, rej) => {
                 exec(combineCmd, (error) => {
                     if (error) {
