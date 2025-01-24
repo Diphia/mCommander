@@ -673,7 +673,16 @@ class FilePane {
             };
 
             if (textExtensions.includes(ext)) {
-                if (!tryShowAsText()) {
+                if (ext === '.html') {
+                    // Handle HTML files with iframe preview
+                    const iframe = document.createElement('iframe');
+                    iframe.className = 'html-preview';
+                    iframe.src = `file://${filePath}`;
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.border = 'none';
+                    inactivePane.fileList.appendChild(iframe);
+                } else if (!tryShowAsText()) {
                     const message = document.createElement('div');
                     message.textContent = 'Error reading text file';
                     message.className = 'preview-error';
